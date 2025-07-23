@@ -1,0 +1,243 @@
+data <- read.table("C:/Users/zeyne/Downloads/file 12_2220329073_ZeynepCengiz.txt", 
+                   header = TRUE,
+                   sep = "",           
+                   quote = "\"",       
+                   strip.white = TRUE) 
+
+data$x4 <- factor(data$x4, 
+                  levels = c(1, 2, 3), 
+                  
+                  labels = c("Lise", "Ön Lisans", "Lisans"))
+
+#2
+summary(data)
+
+#3
+qqnorm(data$y)
+shapiro.test(data$y)
+lny<-log(data$y)
+qqnorm(lny)
+shapiro.test(lny)
+
+df<- cbind(x1 = data$x1, x2 = data$x2, x3 = data$x3,x4=data$x4, lny )
+pairs(df)
+
+#4
+model<- lm(lny ~ x1 + x2 + x3 + factor(x4),data =data)
+summary(model)
+
+residuals <- resid(model)      # Artıklar
+fitted_values <- fitted(model) # Tahmin edilen değerler
+
+plot(fitted_values, residuals,
+     xlab = "Tahmin Edilen Değerler",
+     ylab = "Artıklar",
+     main = "Artıklar vs Tahmin Edilen Değerler")
+abline(h = 0, col = "red", lty = 2)
+
+qqnorm(residuals)
+qqline(residuals, col = "red")
+hist(residuals, main = "Artıkların Histogramı", xlab = "Artıklar")
+
+std_resid <- rstandard(model)
+plot(std_resid, main = "Standartlaştırılmış Artıklar")
+abline(h = c(-2, 2), col = "red", lty = 2)
+
+
+# Uç değer (leverage)
+leverage <- hatvalues(model)
+uc_deger<-which(leverage > 2 * (length(coef(model))/nrow(df)))
+print(uc_deger)
+
+# Aykırı değer (standartlaştırılmış artık)
+aykiri_deger<-which(abs(std_resid) > 2)
+print(aykiri_deger)
+
+# Etkin gözlem (Cook's distance)
+cooks_d <- cooks.distance(model)
+etkin<-which(cooks_d > 4 / nrow(df))
+print(etkin)
+
+
+aykiri_deger <- unique(c(uc_deger, aykiri_deger, etkin))
+print(aykiri_deger)
+
+library(olsrr)
+
+
+
+
+ols_plot_resid_fit(model)      # Artık vs tahmin
+ols_plot_resid_qq(model)       # QQ plot
+ols_plot_resid_hist(model)     # Histogram
+ols_plot_cooksd_bar(model)     # Cook's D barplot
+ols_plot_resid_stud(model)     # Standart artıklar
+
+
+veri_temiz <- data[-aykiri_deger, ]
+model_temiz <- lm(y ~ x1 + x2 + x3 + x4, data = veri_temiz)
+ols_plot_resid_fit(model_temiz)      # Artık vs tahmin
+ols_plot_resid_qq(model_temiz)      # QQ plot
+ols_plot_resid_hist(model_temiz)     # Histogram
+ols_plot_cooksd_bar(model_temiz)     # Cook's D barplot
+ols_plot_resid_stud(model_temiz)     # Standart artıklar
+
+
+inf<-ls.diag(model)
+inf
+
+
+
+
+
+influence.measures(model)
+print(model)
+
+
+
+
+
+
+#5
+
+model <- lm(lny ~ x1 + x2 + x3 + x4, data = data)
+summary(model)
+
+
+
+#6
+summary(model)$coefficients
+
+#7
+summary(model)$r.squared        
+summary(model)$adj.r.squared
+
+#8
+confint(model, level = 0.99)
+
+#9
+
+plot(model$fitted.values, model$residuals,
+     xlab = "Tahmin Edilen Değerler", ylab = "Artıklar",
+     main = "Artıklar vs Tahminler Grafiği")
+abline(h = 0, col = "red")
+
+# Breusch-Pagan testi
+
+library(lmtest)
+bptest(model)
+
+
+
+
+#10
+
+library(lmtest)
+
+# Durbin-Watson testi
+dwtest(model)
+
+
+
+#11
+
+library(car)
+
+# VIF değerleri
+vif(model)
+library(olsrr)
+ols_eigen_cindex(model)
+
+
+#12
+# 10. gözlem için uyum kestirimi
+
+
+model <- lm(lny~ x1 + x2 + x3 + x4, data = data)
+
+exp(predict(model, newdata = data[10, ], interval = "confidence"))
+
+
+#13
+
+
+# Ön kestirim 
+
+
+new_obs <- data.frame(
+  x1 = 9,
+  x2 = 3.5,
+  x3 = 7,
+  x4 = factor("Lisans", levels = levels(data$x4))  # Bu daha güvenli
+)
+
+
+
+model <- lm(lny ~ x1 + x2 + x3 + x4, data = data)
+exp(predict(model, newdata = new_obs, interval = "prediction", level = 0.99))
+
+
+
+
+
+#14
+
+#uyum kestirim güven aralığı:
+exp(predict(model, newdata = data[10, ], interval = "confidence", level = 0.95))
+#ön kestirim güven aralığı:
+new_obs <- data.frame(
+  x1 = 9,
+  x2 = 3.5,
+  x3 = 7,
+  x4 = factor("Lisans", levels = levels(data$x4))  # güvenli yol
+)
+
+exp(predict(model, newdata = new_obs, interval = "prediction", level = 0.95))
+
+#15
+#AIC ile Adım Adım (Stepwise) model seçimi
+
+
+library(MASS)
+step_model <- stepAIC(model, direction="both",trace=FALSE)
+summary(step_model)
+
+
+
+
+# ileri seçim
+
+
+
+library(stats)
+lm.null <- lm(lny ~ 1,data = data)
+lm.full <- lm(lny ~ x1 + x2 + x3 + x4, data = data)  # Tüm değişkenleri içeren model
+
+
+summary(lm.full)
+
+
+#geri seçim
+
+backward<-step(model,direction="backward")
+
+
+
+
+
+#16
+install.packages("glmnet")
+library(glmnet)
+# x4 faktörü dummy'lere çevrilir, model matrisi oluşturulur
+X <- model.matrix(y ~ x1 + x2 + x3 + x4, data = data)[, -1]  # sabit terim hariç
+y <- data$y
+ridge_model <- glmnet(X, y, alpha = 0)
+plot(ridge_model, xvar = "lambda", label = TRUE,
+     main = "Ridge Regresyon İz Grafiği")
+write.table(veri_temiz, file = "temiz_veri.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+getwd()
+
+
+
+
+
